@@ -1,0 +1,8 @@
+# Test move patch
+*** Begin Patch
+*** Update File: test_output.txt
+*** Move to: test_output_renamed.txt
+@@ Hello, World!
+-This is a modified test file.
++This is a renamed file.
+*** End Patch

@@ -1,0 +1,7 @@
+# Test update patch - using context before target
+*** Begin Patch
+*** Update File: test_output.txt
+@@ Hello, World!
+-This is a test file.
++This is a modified test file.
+*** End Patch

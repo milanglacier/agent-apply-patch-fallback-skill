@@ -1,0 +1,7 @@
+# Test failing patch
+*** Begin Patch
+*** Update File: nonexistent.txt
+@@ line 1
+-This line does not exist
++Replacement
+*** End Patch

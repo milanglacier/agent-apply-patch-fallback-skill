@@ -1,0 +1,6 @@
+# Test patch format
+*** Begin Patch
+*** Add File: test_output.txt
++Hello, World!
++This is a test file.
+*** End Patch

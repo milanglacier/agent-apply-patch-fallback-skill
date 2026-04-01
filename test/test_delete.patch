@@ -1,0 +1,4 @@
+# Test delete patch
+*** Begin Patch
+*** Delete File: test_output_renamed.txt
+*** End Patch
