@@ -1,0 +1,7 @@
+.tags
+# pycache
+__pycache__/
+*.py[cod]
+*$py.class
+# ruff cache
+.ruff_cache/
