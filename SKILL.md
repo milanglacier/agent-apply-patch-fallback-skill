@@ -9,8 +9,7 @@ Use the `apply_patch` Python script to edit files when no native file editing to
 
 ## When to Use This Skill
 
-- The environment has no built-in `apply_patch`, `edit`, or `write` tools
-- You're working via SSH or in a minimal shell environment
+- The agent has no built-in `apply_patch`, `edit`, or `write` tools
 - You can execute Python/shell commands but cannot directly modify files through API calls
 
 ## Installation
