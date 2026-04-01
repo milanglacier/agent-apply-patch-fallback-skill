@@ -99,6 +99,14 @@ TESTS = [
         True,
     ),
     (
+        "context_reference_lines",
+        "test_context_reference.patch",
+        [
+            ("test_context_reference.txt", "test_context_reference.txt"),
+        ],
+        True,
+    ),
+    (
         "pure_additions",
         "test_pure_additions.patch",
         [

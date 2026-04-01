@@ -1,0 +1,9 @@
+# Test reference lines after @@ anchor
+*** Begin Patch
+*** Update File: test_context_reference.txt
+@@ Reference anchor
+ Reference line one
+ Reference line two
+-Old target line
++New target line
+*** End Patch
