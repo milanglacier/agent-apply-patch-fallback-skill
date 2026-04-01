@@ -1,0 +1,12 @@
+# Test reference lines plus rename
+*** Begin Patch
+*** Update File: test_context_reference_rename.txt
+*** Move to: test_context_reference_rename_after.txt
+@@ Rename anchor
+ Reference line one
+ Reference line two
+-Old line one
+-Old line two
++New line one
++New line two
+*** End Patch

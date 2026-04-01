@@ -107,6 +107,17 @@ TESTS = [
         True,
     ),
     (
+        "context_reference_rename",
+        "test_context_reference_rename.patch",
+        [
+            (
+                "test_context_reference_rename.txt",
+                "test_context_reference_rename.txt",
+            ),
+        ],
+        True,
+    ),
+    (
         "pure_additions",
         "test_pure_additions.patch",
         [
