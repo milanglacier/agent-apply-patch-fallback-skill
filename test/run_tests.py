@@ -6,7 +6,6 @@ Runs all test patches and reports results.
 
 import subprocess
 import sys
-import os
 import tempfile
 import shutil
 from pathlib import Path
@@ -178,7 +177,7 @@ def setup_test_env(test_dir, setup_files):
             shutil.copy(src_path, dst_path)
 
 
-def run_test(test_name, patch_file, setup_files, should_succeed, test_dir):
+def run_test(_test_name, patch_file, setup_files, should_succeed, test_dir):
     """Run a single test and return result."""
     script_dir = Path(__file__).parent
     patch_path = script_dir / patch_file
