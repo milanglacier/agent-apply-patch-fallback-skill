@@ -151,5 +151,4 @@ The script outputs clear error messages. For match failures, verify the exact te
 
 ## References
 
-- Full documentation: See `references/README.md`
 - Test patches: See `test/` directory for examples
