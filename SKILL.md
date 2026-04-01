@@ -1,6 +1,6 @@
 ---
 name: apply-patch-fallback
-description: Fallback for editing files when no native file editing tools (apply_patch, edit) are available. Only use when the environment lacks built-in file edit capabilities and you need to apply patches.
+description: Fallback for editing files when no native file editing tools (apply_patch, edit) are available. Only use when the agent lacks native file edit tools and you need to apply patches.
 ---
 
 # Apply Patch Fallback
