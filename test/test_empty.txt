@@ -1,0 +1,6 @@
+Section with blank
+Line before blank
+
+Line after blank
+End section
+Old end

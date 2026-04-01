@@ -1,0 +1,5 @@
+# Test single line file
+*** Begin Patch
+*** Add File: test_single_line.txt
++Only one line
+*** End Patch

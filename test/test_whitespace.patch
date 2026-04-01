@@ -1,0 +1,13 @@
+# Test whitespace and trailing space variations
+*** Begin Patch
+*** Update File: test_whitespace.txt
+@@ Line with trailing spaces  
+-Content with trailing spaces   
++Content with trailing spaces
+@@ Tab indentation
+-	Old tab indented
++    New space indented
+@@ Mixed whitespace
+-  Old mixed  
++  New mixed  
+*** End Patch

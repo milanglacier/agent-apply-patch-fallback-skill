@@ -1,0 +1,11 @@
+# Test EOF anchor matching
+*** Begin Patch
+*** Update File: test_eof.txt
+@@ Middle section
+-Middle content
++Updated middle content
+@@ End of File marker
+*** End of File
+-Last line
++Very last line updated
+*** End Patch

@@ -1,0 +1,13 @@
+# Test fuzzy matching - content exists but with variations
+*** Begin Patch
+*** Update File: test_fuzzy.txt
+@@ Section A
+-Exact match line
++Fuzzy matched exact
+@@ Section B
+-Whitespace variation line
++Fuzzy matched whitespace
+@@ Section C
+-Normalized unicode line
++Fuzzy matched unicode
+*** End Patch

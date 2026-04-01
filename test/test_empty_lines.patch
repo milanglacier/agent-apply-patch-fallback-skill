@@ -1,0 +1,10 @@
+# Test empty lines and edge cases - testing pure addition after blank line
+*** Begin Patch
+*** Update File: test_empty.txt
+@@ Section with blank
+-Line before blank
++New line before
+@@ End section
+-Old end
++New end with content
+*** End Patch

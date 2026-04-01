@@ -1,0 +1,6 @@
+Section A
+Exact match line
+Section B
+Whitespace variation line  
+Section C
+Normalized unicode line

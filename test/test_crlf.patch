@@ -1,0 +1,7 @@
+# Test Windows line endings (CRLF)
+*** Begin Patch
+*** Update File: test_crlf.txt
+@@ Section
+-Old line
++New line
+*** End Patch

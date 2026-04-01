@@ -1,0 +1,7 @@
+# Test binary-like content (non-UTF8 shouldn't break)
+*** Begin Patch
+*** Add File: test_binary_safe.txt
++Regular text content
++With multiple lines
++And special chars: @#$%^&*()
+*** End Patch

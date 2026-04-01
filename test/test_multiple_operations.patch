@@ -1,0 +1,22 @@
+# Test multiple operations in one patch
+*** Begin Patch
+*** Add File: test_multi/new_file.txt
++This is a new file.
++With multiple lines.
++And a third line.
+*** Update File: test_multi/existing_file.txt
+@@ Line 1
+-Old content line 1
++Updated content line 1
+@@ Line 3
+-Old content line 3
++Updated content line 3
+*** Add File: test_multi/nested/deep/file.txt
++Deep nested content.
+*** Delete File: test_multi/delete_me.txt
+*** Update File: test_multi/move_me.txt
+*** Move to: test_multi/moved_file.txt
+@@ Content to move
+-Original content
++Moved and modified content
+*** End Patch

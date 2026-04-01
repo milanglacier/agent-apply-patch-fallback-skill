@@ -1,0 +1,11 @@
+# Test complex nested directories
+*** Begin Patch
+*** Add File: test_nested/level1/level2/level3/deep_file.txt
++Deeply nested file content
+*** Add File: test_nested/level1/file1.txt
++Level 1 content
+*** Add File: test_nested/level1/level2/file2.txt
++Level 2 content
+*** Add File: test_nested/root_file.txt
++Root level content
+*** End Patch

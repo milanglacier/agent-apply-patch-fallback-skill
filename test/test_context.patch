@@ -1,0 +1,13 @@
+# Test context line variations
+*** Begin Patch
+*** Update File: test_context.txt
+@@ Context with special chars: @#$%^&*()
+-Line with special chars
++Updated special chars
+@@ Unicode context: 你好世界
+-Unicode line
++Updated unicode line
+@@ Long context line that is very descriptive and helps locate the exact position in the file
+-Long context target
++Updated long context target
+*** End Patch

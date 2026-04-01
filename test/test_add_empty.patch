@@ -1,0 +1,4 @@
+# Test empty file creation
+*** Begin Patch
+*** Add File: test_empty_new.txt
+*** End Patch

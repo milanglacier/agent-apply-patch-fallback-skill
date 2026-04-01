@@ -1,0 +1,10 @@
+# Test heredoc format parsing
+*** Begin Patch
+*** Add File: test_heredoc.txt
++Heredoc format test
++Line 2
+*** Update File: test_heredoc_existing.txt
+@@ Marker
+-Old content
++New content
+*** End Patch

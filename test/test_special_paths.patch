@@ -1,0 +1,7 @@
+# Test file permissions/paths with spaces
+*** Begin Patch
+*** Add File: test path with spaces/file.txt
++Content in path with spaces
+*** Add File: test_path_with_"quotes"/file.txt
++Content with quotes in path
+*** End Patch

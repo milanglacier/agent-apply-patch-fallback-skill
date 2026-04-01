@@ -1,0 +1,10 @@
+# Test file with only deletions
+*** Begin Patch
+*** Update File: test_deletions.txt
+@@ Keep this section
+-Delete line 1
+-Delete line 2
+-Delete line 3
+@@ Another keep
+-Another delete
+*** End Patch

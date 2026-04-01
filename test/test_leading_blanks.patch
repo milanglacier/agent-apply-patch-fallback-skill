@@ -1,0 +1,8 @@
+# Test file with leading/trailing blank lines
+*** Begin Patch
+*** Update File: test_leading_blanks.txt
+@@ Start
++New first line
+-Content line
++Updated content
+*** End Patch

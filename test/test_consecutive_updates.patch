@@ -1,0 +1,16 @@
+# Test multiple consecutive updates on same file
+*** Begin Patch
+*** Update File: test_consecutive.txt
+@@ First
+-First old
++First new
+@@ Second
+-Second old
++Second new
+@@ Third
+-Third old
++Third new
+@@ Fourth
+-Fourth old
++Fourth new
+*** End Patch

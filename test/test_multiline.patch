@@ -1,0 +1,13 @@
+# Test multi-line replacements
+*** Begin Patch
+*** Update File: test_multiline.txt
+@@ Function start
+def old_function():
+-    line1
+-    line2
+-    line3
++    new_line1
++    new_line2
++    new_line3
++    new_line4
+*** End Patch

@@ -1,0 +1,14 @@
+# Test Unicode normalization
+*** Begin Patch
+*** Update File: test_unicode.txt
+@@ Smart quotes test
+-"Hello World"
++'Hello World'
+@@ Dashes test
+– en-dash
+— em-dash
++-- regular dash
+@@ Ellipsis test
+… ellipsis
++... three dots
+*** End Patch

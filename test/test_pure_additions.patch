@@ -1,0 +1,10 @@
+# Test pure additions (no old lines)
+*** Begin Patch
+*** Update File: test_additions.txt
+@@ After this line
++First new line
++Second new line
++Third new line
+@@ Another marker
++More content here
+*** End Patch

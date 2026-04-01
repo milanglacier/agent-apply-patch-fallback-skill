@@ -1,0 +1,25 @@
+# Test large file operations
+*** Begin Patch
+*** Add File: test_large/large_file.txt
++Line 1
++Line 2
++Line 3
++Line 4
++Line 5
++Line 6
++Line 7
++Line 8
++Line 9
++Line 10
+*** Update File: test_large/existing_large.txt
+@@ Line 4
+-Line 5
++Updated Line 5
+@@ Line 9
+-Line 10
++Updated Line 10
+@@ Line 14
+-Line 15
++Updated Line 15
+*** Delete File: test_large/delete_large.txt
+*** End Patch

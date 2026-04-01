@@ -1,0 +1,13 @@
+# Test multiple update chunks in same file
+*** Begin Patch
+*** Update File: test_chunks.txt
+@@ First section
+-Old first line
++New first line
+@@ Second section
+-Old second line
++New second line
+@@ Third section
+-Old third line
++New third line
+*** End Patch

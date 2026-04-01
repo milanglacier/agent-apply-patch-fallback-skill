@@ -1,0 +1,6 @@
+Function start
+def old_function():
+    line1
+    line2
+    line3
+End function
