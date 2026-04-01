@@ -31,6 +31,8 @@ python3 run_tests.py
 - **multiline_replacement** - Replacing multiple consecutive lines
 - **empty_lines** - Handling blank lines and edge cases
 - **context_variations** - Context lines with special characters and unicode
+- **context_reference_lines** - `@@` anchor line plus additional space-prefixed reference lines
+- **context_reference_rename** - `@@` anchor line plus reference lines in a renamed file
 - **pure_additions** - Adding content without removing (empty old_lines)
 - **nested_directories** - Creating deeply nested directory structures
 - **deletions_only** - Removing lines without adding new ones

@@ -43,10 +43,13 @@ Your patch language is a stripped‑down, file‑oriented diff format:
 - `*** Delete File: <path>` — Remove an existing file. Nothing follows.
 - `*** Update File: <path>` — Patch an existing file in place. Optionally add `*** Move to: <new_path>` to rename.
 
-**Update chunks use context markers:**
+
+Update chunks use one `@@` anchor line, followed by optional reference lines:
 
 ```
-@@ <context line for positioning>
+@@ <anchor context line>
+ reference line 1
+ reference line 2
 -<old line to remove>
 +<new line to add>
 ```
@@ -108,8 +111,9 @@ apply_patch <<'EOF'
 *** Begin Patch
 *** Update File: old_name.py
 *** Move to: new_name.py
-@@ # Old file
-+# New file location
+@@ # Old file Header
+ # Keep this nearby for positioning
++# New Content
 *** End Patch
 EOF
 ```
@@ -128,7 +132,7 @@ EOF
 
 1. **Always include the header** (`Add File`, `Delete File`, or `Update File`)
 2. **Prefix new content lines with `+`** even when creating new files
-3. **Use `@@` context lines** in updates to help locate where changes go
+3. **Use one `@@` anchor line** in updates, then add any extra reference lines below it as space-prefixed context
 4. **Multiple operations** can be combined in one patch
 
 ## Error Handling
