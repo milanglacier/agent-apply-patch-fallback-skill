@@ -1,6 +1,6 @@
 ---
 name: apply-patch-fallback
-description: Use this skill when you need to edit files but the environment has no native apply_patch or file edit tools available. This provides a shell-based fallback using the apply_patch Python script. The skill is designed for agents running in constrained environments (remote shells, minimal containers, CI/CD pipelines) where you can execute shell commands but lack built-in file editing capabilities.
+description: Use this skill when you need to edit files but the environment has no native apply_patch or file edit tools available. This provides a shell-based fallback using the apply_patch Python script.
 ---
 
 # Apply Patch Fallback
