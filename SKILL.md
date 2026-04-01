@@ -1,6 +1,6 @@
 ---
 name: apply-patch-fallback
-description: Use this skill when you need to edit files but the environment has no native apply_patch or file edit tools available. This provides a shell-based fallback using the apply_patch Python script.
+description: Fallback for editing files when no native file editing tools (apply_patch, edit) are available. Only use when the environment lacks built-in file edit capabilities and you need to apply patches.
 ---
 
 # Apply Patch Fallback
