@@ -19,27 +19,29 @@ Exit codes:
 """
 
 import sys
-import os
 import re
 import argparse
 from pathlib import Path
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
 
 
 class PatchError(Exception):
     """Base exception for patch errors."""
+
     pass
 
 
 class ParseError(PatchError):
     """Patch format parsing error."""
+
     pass
 
 
 class ApplicationError(PatchError):
     """Error applying patch to files."""
+
     pass
 
 
@@ -52,6 +54,7 @@ class HunkType(Enum):
 @dataclass
 class UpdateChunk:
     """Represents an update chunk for a file."""
+
     old_lines: List[str]
     new_lines: List[str]
     change_context: Optional[str] = None
@@ -61,6 +64,7 @@ class UpdateChunk:
 @dataclass
 class Hunk:
     """Represents a single file operation in a patch."""
+
     type: HunkType
     path: str
     contents: str = ""  # For add operations
@@ -71,6 +75,7 @@ class Hunk:
 @dataclass
 class FileChange:
     """Represents a file change result."""
+
     path: str
     type: str  # 'add', 'update', 'delete', 'move'
     move_path: Optional[str] = None
@@ -78,20 +83,35 @@ class FileChange:
 
 def normalize_unicode(text: str) -> str:
     """Normalize Unicode punctuation to ASCII equivalents."""
-    return (text
-        .replace('\u2018', "'").replace('\u2019', "'").replace('\u201A', "'").replace('\u201B', "'")
-        .replace('\u201C', '"').replace('\u201D', '"').replace('\u201E', '"').replace('\u201F', '"')
-        .replace('\u2010', '-').replace('\u2011', '-').replace('\u2012', '-').replace('\u2013', '-').replace('\u2014', '-').replace('\u2015', '-')
-        .replace('\u2026', '...')
-        .replace('\u00A0', ' '))
+    return (
+        text.replace("\u2018", "'")
+        .replace("\u2019", "'")
+        .replace("\u201a", "'")
+        .replace("\u201b", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+        .replace("\u201e", '"')
+        .replace("\u201f", '"')
+        .replace("\u2010", "-")
+        .replace("\u2011", "-")
+        .replace("\u2012", "-")
+        .replace("\u2013", "-")
+        .replace("\u2014", "-")
+        .replace("\u2015", "-")
+        .replace("\u2026", "...")
+        .replace("\u00a0", " ")
+    )
 
 
-def seek_sequence(lines: List[str], pattern: List[str], start_idx: int, eof: bool = False) -> int:
+def seek_sequence(
+    lines: List[str], pattern: List[str], start_idx: int, eof: bool = False
+) -> int:
     """
     Find pattern in lines starting from start_idx.
     Tries multiple matching strategies: exact, rstrip, trim, normalized.
     Returns -1 if not found.
     """
+
     def try_match(compare_func) -> int:
         # If EOF anchor, try matching from end first
         if eof:
@@ -104,7 +124,7 @@ def seek_sequence(lines: List[str], pattern: List[str], start_idx: int, eof: boo
                         break
                 if matches:
                     return from_end
-        
+
         # Forward search
         for i in range(start_idx, len(lines) - len(pattern) + 1):
             matches = True
@@ -115,84 +135,103 @@ def seek_sequence(lines: List[str], pattern: List[str], start_idx: int, eof: boo
             if matches:
                 return i
         return -1
-    
+
     # Pass 1: exact match
     result = try_match(lambda a, b: a == b)
     if result != -1:
         return result
-    
+
     # Pass 2: rstrip (trim trailing whitespace)
     result = try_match(lambda a, b: a.rstrip() == b.rstrip())
     if result != -1:
         return result
-    
+
     # Pass 3: trim (both ends)
     result = try_match(lambda a, b: a.strip() == b.strip())
     if result != -1:
         return result
-    
+
     # Pass 4: normalized (Unicode to ASCII)
-    result = try_match(lambda a, b: normalize_unicode(a.strip()) == normalize_unicode(b.strip()))
+    result = try_match(
+        lambda a, b: normalize_unicode(a.strip()) == normalize_unicode(b.strip())
+    )
     return result
 
 
-def compute_replacements(original_lines: List[str], chunks: List[UpdateChunk], file_path: str) -> List[Tuple[int, int, List[str]]]:
+def compute_replacements(
+    original_lines: List[str], chunks: List[UpdateChunk], file_path: str
+) -> List[Tuple[int, int, List[str]]]:
     """
     Compute replacements for update chunks.
     Returns list of (start_idx, old_len, new_lines).
     """
     replacements = []
     line_idx = 0
-    
+
     for chunk in chunks:
         # Handle context-based seeking
         if chunk.change_context:
-            context_idx = seek_sequence(original_lines, [chunk.change_context], line_idx)
+            context_idx = seek_sequence(
+                original_lines, [chunk.change_context], line_idx
+            )
             if context_idx == -1:
-                raise ApplicationError(f"Failed to find context '{chunk.change_context}' in {file_path}")
+                raise ApplicationError(
+                    f"Failed to find context '{chunk.change_context}' in {file_path}"
+                )
             line_idx = context_idx + 1
-        
+
         # Handle pure addition (no old lines)
         if len(chunk.old_lines) == 0:
-            insertion_idx = len(original_lines) - 1 if original_lines and original_lines[-1] == "" else len(original_lines)
+            insertion_idx = (
+                len(original_lines) - 1
+                if original_lines and original_lines[-1] == ""
+                else len(original_lines)
+            )
             replacements.append((insertion_idx, 0, chunk.new_lines))
             continue
-        
+
         # Try to match old lines
         pattern = chunk.old_lines[:]
         new_slice = chunk.new_lines[:]
         found = seek_sequence(original_lines, pattern, line_idx, chunk.is_end_of_file)
-        
+
         # Retry without trailing empty line if not found
         if found == -1 and pattern and pattern[-1] == "":
             pattern = pattern[:-1]
             if new_slice and new_slice[-1] == "":
                 new_slice = new_slice[:-1]
-            found = seek_sequence(original_lines, pattern, line_idx, chunk.is_end_of_file)
-        
+            found = seek_sequence(
+                original_lines, pattern, line_idx, chunk.is_end_of_file
+            )
+
         if found != -1:
             replacements.append((found, len(pattern), new_slice))
             line_idx = found + len(pattern)
         else:
-            raise ApplicationError(f"Failed to find expected lines in {file_path}:\n" + '\n'.join(chunk.old_lines))
-    
+            raise ApplicationError(
+                f"Failed to find expected lines in {file_path}:\n"
+                + "\n".join(chunk.old_lines)
+            )
+
     # Sort by index to apply in order
     replacements.sort(key=lambda x: x[0])
     return replacements
 
 
-def apply_replacements(lines: List[str], replacements: List[Tuple[int, int, List[str]]]) -> List[str]:
+def apply_replacements(
+    lines: List[str], replacements: List[Tuple[int, int, List[str]]]
+) -> List[str]:
     """Apply replacements in reverse order to avoid index shifting."""
     result = lines[:]
-    
+
     for start_idx, old_len, new_segment in reversed(replacements):
         # Remove old lines
-        result = result[:start_idx] + result[start_idx + old_len:]
-        
+        result = result[:start_idx] + result[start_idx + old_len :]
+
         # Insert new lines
         for j, line in enumerate(new_segment):
             result.insert(start_idx + j, line)
-    
+
     return result
 
 
@@ -202,56 +241,58 @@ def derive_new_content(file_path: str, chunks: List[UpdateChunk]) -> str:
     Returns the new content.
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             original_content = f.read()
     except FileNotFoundError:
         raise ApplicationError(f"File not found: {file_path}")
     except Exception as e:
         raise ApplicationError(f"Failed to read file {file_path}: {e}")
-    
-    original_lines = original_content.split('\n')
-    
+
+    original_lines = original_content.split("\n")
+
     # Drop trailing empty element for consistent line counting
     if original_lines and original_lines[-1] == "":
         original_lines.pop()
-    
+
     replacements = compute_replacements(original_lines, chunks, file_path)
     new_lines = apply_replacements(original_lines, replacements)
-    
+
     # Ensure trailing newline
     if not new_lines or new_lines[-1] != "":
         new_lines.append("")
-    
-    return '\n'.join(new_lines)
+
+    return "\n".join(new_lines)
 
 
-def parse_patch_header(lines: List[str], start_idx: int) -> Optional[Tuple[str, Optional[str], int, HunkType]]:
+def parse_patch_header(
+    lines: List[str], start_idx: int
+) -> Optional[Tuple[str, Optional[str], int, HunkType]]:
     """
     Parse a patch header line.
     Returns (file_path, move_path, next_idx, hunk_type) or None.
     """
     line = lines[start_idx] if start_idx < len(lines) else ""
-    
+
     if line.startswith("*** Add File:"):
-        file_path = line[len("*** Add File:"):].strip()
+        file_path = line[len("*** Add File:") :].strip()
         return (file_path, None, start_idx + 1, HunkType.ADD) if file_path else None
-    
+
     if line.startswith("*** Delete File:"):
-        file_path = line[len("*** Delete File:"):].strip()
+        file_path = line[len("*** Delete File:") :].strip()
         return (file_path, None, start_idx + 1, HunkType.DELETE) if file_path else None
-    
+
     if line.startswith("*** Update File:"):
-        file_path = line[len("*** Update File:"):].strip()
+        file_path = line[len("*** Update File:") :].strip()
         move_path = None
         next_idx = start_idx + 1
-        
+
         # Check for move directive
         if next_idx < len(lines) and lines[next_idx].startswith("*** Move to:"):
-            move_path = lines[next_idx][len("*** Move to:"):].strip()
+            move_path = lines[next_idx][len("*** Move to:") :].strip()
             next_idx += 1
-        
+
         return (file_path, move_path, next_idx, HunkType.UPDATE) if file_path else None
-    
+
     return None
 
 
@@ -259,41 +300,47 @@ def parse_add_file_content(lines: List[str], start_idx: int) -> Tuple[str, int]:
     """Parse content for Add File operation."""
     content_lines = []
     i = start_idx
-    
+
     while i < len(lines) and not lines[i].startswith("***"):
         if lines[i].startswith("+"):
             content_lines.append(lines[i][1:])
         i += 1
-    
+
     # Join with newlines but don't add trailing newline if last line was empty
-    content = '\n'.join(content_lines)
+    content = "\n".join(content_lines)
     return content, i
 
 
-def parse_update_chunks(lines: List[str], start_idx: int) -> Tuple[List[UpdateChunk], int]:
+def parse_update_chunks(
+    lines: List[str], start_idx: int
+) -> Tuple[List[UpdateChunk], int]:
     """Parse update chunks for Update File operation."""
     chunks = []
     i = start_idx
-    
+
     while i < len(lines) and not lines[i].startswith("***"):
         if lines[i].startswith("@@"):
             # Parse context line
             context_line = lines[i][2:].strip()
             i += 1
-            
+
             old_lines = []
             new_lines = []
             is_end_of_file = False
-            
+
             # Parse change lines
-            while i < len(lines) and not lines[i].startswith("@@") and not lines[i].startswith("***"):
+            while (
+                i < len(lines)
+                and not lines[i].startswith("@@")
+                and not lines[i].startswith("***")
+            ):
                 change_line = lines[i]
-                
+
                 if change_line == "*** End of File":
                     is_end_of_file = True
                     i += 1
                     break
-                
+
                 if change_line.startswith(" "):
                     # Keep line - appears in both old and new
                     content = change_line[1:]
@@ -305,18 +352,20 @@ def parse_update_chunks(lines: List[str], start_idx: int) -> Tuple[List[UpdateCh
                 elif change_line.startswith("+"):
                     # Add line - only in new
                     new_lines.append(change_line[1:])
-                
+
                 i += 1
-            
-            chunks.append(UpdateChunk(
-                old_lines=old_lines,
-                new_lines=new_lines,
-                change_context=context_line or None,
-                is_end_of_file=is_end_of_file
-            ))
+
+            chunks.append(
+                UpdateChunk(
+                    old_lines=old_lines,
+                    new_lines=new_lines,
+                    change_context=context_line or None,
+                    is_end_of_file=is_end_of_file,
+                )
+            )
         else:
             i += 1
-    
+
     return chunks, i
 
 
@@ -325,72 +374,73 @@ def parse_patch(patch_text: str) -> List[Hunk]:
     Parse patch text and return list of hunks.
     """
     # Strip heredoc markers if present
-    heredoc_match = re.match(r'^(?:cat\s+)?<<[\'"]*(\w+)[\'"]*\s*\n([\s\S]*?)\n\1\s*$', patch_text.strip())
+    heredoc_match = re.match(
+        r'^(?:cat\s+)?<<[\'"]*(\w+)[\'"]*\s*\n([\s\S]*?)\n\1\s*$', patch_text.strip()
+    )
     if heredoc_match:
         patch_text = heredoc_match.group(2)
-    
-    lines = patch_text.split('\n')
+
+    lines = patch_text.split("\n")
     hunks = []
-    
+
     # Find Begin/End patch markers
     begin_marker = "*** Begin Patch"
     end_marker = "*** End Patch"
-    
+
     begin_idx = -1
     end_idx = -1
-    
+
     for i, line in enumerate(lines):
         if line.strip() == begin_marker:
             begin_idx = i
         elif line.strip() == end_marker:
             end_idx = i
             break
-    
+
     if begin_idx == -1 or end_idx == -1:
-        raise ParseError(f"Invalid patch format: missing {'Begin' if begin_idx == -1 else 'End'} marker")
-    
+        raise ParseError(
+            f"Invalid patch format: missing {'Begin' if begin_idx == -1 else 'End'} marker"
+        )
+
     if begin_idx >= end_idx:
-        raise ParseError("Invalid patch format: Begin marker must come before End marker")
-    
+        raise ParseError(
+            "Invalid patch format: Begin marker must come before End marker"
+        )
+
     # Parse content between markers
     i = begin_idx + 1
-    
+
     while i < end_idx:
         header = parse_patch_header(lines, i)
         if not header:
             i += 1
             continue
-        
+
         file_path, move_path, next_idx, hunk_type = header
-        
+
         if lines[i].startswith("*** Add File:"):
             content, next_idx = parse_add_file_content(lines, next_idx)
-            hunks.append(Hunk(
-                type=HunkType.ADD,
-                path=file_path,
-                contents=content
-            ))
+            hunks.append(Hunk(type=HunkType.ADD, path=file_path, contents=content))
             i = next_idx
-        
+
         elif lines[i].startswith("*** Delete File:"):
-            hunks.append(Hunk(
-                type=HunkType.DELETE,
-                path=file_path
-            ))
+            hunks.append(Hunk(type=HunkType.DELETE, path=file_path))
             i = next_idx
-        
+
         elif lines[i].startswith("*** Update File:"):
             chunks, next_idx = parse_update_chunks(lines, next_idx)
-            hunks.append(Hunk(
-                type=HunkType.UPDATE,
-                path=file_path,
-                move_path=move_path,
-                chunks=chunks
-            ))
+            hunks.append(
+                Hunk(
+                    type=HunkType.UPDATE,
+                    path=file_path,
+                    move_path=move_path,
+                    chunks=chunks,
+                )
+            )
             i = next_idx
         else:
             i += 1
-    
+
     return hunks
 
 
@@ -401,69 +451,69 @@ def apply_hunks(hunks: List[Hunk], base_dir: str = ".") -> List[FileChange]:
     """
     if not hunks:
         raise ApplicationError("No hunks to apply")
-    
+
     changes = []
     base = Path(base_dir).resolve()
-    
+
     for hunk in hunks:
         file_path = base / hunk.path
-        
+
         if hunk.type == HunkType.ADD:
             # Create parent directories
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Write file
             try:
-                with open(file_path, 'w', encoding='utf-8') as f:
+                with open(file_path, "w", encoding="utf-8") as f:
                     f.write(hunk.contents)
-                changes.append(FileChange(path=str(file_path), type='add'))
+                changes.append(FileChange(path=str(file_path), type="add"))
             except Exception as e:
                 raise ApplicationError(f"Failed to create file {file_path}: {e}")
-        
+
         elif hunk.type == HunkType.DELETE:
             try:
                 file_path.unlink()
-                changes.append(FileChange(path=str(file_path), type='delete'))
+                changes.append(FileChange(path=str(file_path), type="delete"))
             except FileNotFoundError:
                 raise ApplicationError(f"File to delete not found: {file_path}")
             except Exception as e:
                 raise ApplicationError(f"Failed to delete file {file_path}: {e}")
-        
+
         elif hunk.type == HunkType.UPDATE:
             if not file_path.exists():
                 raise ApplicationError(f"File to update not found: {file_path}")
-            
+
             if file_path.is_dir():
                 raise ApplicationError(f"Path is a directory, not a file: {file_path}")
-            
+
             try:
                 new_content = derive_new_content(str(file_path), hunk.chunks)
-                
+
                 if hunk.move_path:
                     # Move operation: write to new location, delete old
                     move_path = base / hunk.move_path
                     move_path.parent.mkdir(parents=True, exist_ok=True)
-                    
-                    with open(move_path, 'w', encoding='utf-8') as f:
+
+                    with open(move_path, "w", encoding="utf-8") as f:
                         f.write(new_content)
-                    
+
                     file_path.unlink()
-                    changes.append(FileChange(
-                        path=str(file_path),
-                        type='move',
-                        move_path=str(move_path)
-                    ))
+                    changes.append(
+                        FileChange(
+                            path=str(file_path), type="move", move_path=str(move_path)
+                        )
+                    )
                 else:
                     # Regular update
-                    with open(file_path, 'w', encoding='utf-8') as f:
+                    with open(file_path, "w", encoding="utf-8") as f:
                         f.write(new_content)
-                    changes.append(FileChange(path=str(file_path), type='update'))
-                    
+                    changes.append(FileChange(path=str(file_path), type="update"))
+
             except ApplicationError:
                 raise
             except Exception as e:
                 raise ApplicationError(f"Failed to update file {file_path}: {e}")
-    
+
     return changes
 
 
@@ -471,22 +521,22 @@ def format_changes(changes: List[FileChange]) -> str:
     """Format changes for output."""
     lines = ["Success. Updated the following files:"]
     for change in changes:
-        if change.type == 'add':
+        if change.type == "add":
             lines.append(f"A {change.path}")
-        elif change.type == 'delete':
+        elif change.type == "delete":
             lines.append(f"D {change.path}")
-        elif change.type == 'move':
+        elif change.type == "move":
             lines.append(f"M {change.path} -> {change.move_path}")
         else:
             lines.append(f"M {change.path}")
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Apply patch files to your codebase.',
+        description="Apply patch files to your codebase.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog='''
+        epilog="""
 Patch format:
   *** Begin Patch
   *** Add File: <path>
@@ -508,56 +558,63 @@ Examples:
   *** End Patch
   EOF
   cat patch.txt | apply_patch
-        '''
+        """,
     )
-    parser.add_argument('patch_file', nargs='?', help='Path to patch file (or stdin if not provided)')
-    parser.add_argument('-d', '--directory', default='.', help='Base directory for file operations (default: current directory)')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
-    
+    parser.add_argument(
+        "patch_file", nargs="?", help="Path to patch file (or stdin if not provided)"
+    )
+    parser.add_argument(
+        "-d",
+        "--directory",
+        default=".",
+        help="Base directory for file operations (default: current directory)",
+    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+
     args = parser.parse_args()
-    
+
     try:
         # Read patch content
         if args.patch_file:
-            with open(args.patch_file, 'r', encoding='utf-8') as f:
+            with open(args.patch_file, "r", encoding="utf-8") as f:
                 patch_text = f.read()
         else:
             patch_text = sys.stdin.read()
-        
+
         if not patch_text.strip():
             print("Error: No patch content provided", file=sys.stderr)
             sys.exit(1)
-        
+
         # Parse patch
         try:
             hunks = parse_patch(patch_text)
         except ParseError as e:
             print(f"Parse error: {e}", file=sys.stderr)
             sys.exit(1)
-        
+
         if not hunks:
             # Check for empty patch
-            normalized = patch_text.replace('\r\n', '\n').replace('\r', '\n').strip()
+            normalized = patch_text.replace("\r\n", "\n").replace("\r", "\n").strip()
             if normalized == "*** Begin Patch\n*** End Patch":
                 print("Error: patch rejected: empty patch", file=sys.stderr)
                 sys.exit(1)
             print("Error: No hunks found in patch", file=sys.stderr)
             sys.exit(1)
-        
+
         if args.verbose:
             print(f"Parsed {len(hunks)} hunks", file=sys.stderr)
-        
+
         # Apply hunks
         try:
             changes = apply_hunks(hunks, args.directory)
         except ApplicationError as e:
             print(f"Apply error: {e}", file=sys.stderr)
             sys.exit(2)
-        
+
         # Output results
         print(format_changes(changes))
         sys.exit(0)
-        
+
     except IOError as e:
         print(f"I/O error: {e}", file=sys.stderr)
         sys.exit(3)
@@ -566,5 +623,5 @@ Examples:
         sys.exit(130)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
