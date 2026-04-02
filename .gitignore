@@ -5,3 +5,4 @@ __pycache__/
 *$py.class
 # ruff cache
 .ruff_cache/
+.codex
