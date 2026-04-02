@@ -182,6 +182,12 @@ TESTS = [
     ),
 ]
 
+EXPECTED_OUTPUTS = {
+    "pure_additions": [
+        ("test_additions.txt", "test_pure_additions_expected.txt"),
+    ],
+}
+
 
 def setup_test_env(test_dir, setup_files):
     """Copy setup files to test directory."""
@@ -201,6 +207,7 @@ def run_test(_test_name, patch_file, setup_files, should_succeed, test_dir):
     script_dir = Path(__file__).parent
     patch_path = script_dir / patch_file
     apply_patch = script_dir.parent / "scripts" / "apply_patch"
+    expected_outputs = EXPECTED_OUTPUTS.get(_test_name, [])
 
     # Setup test files
     setup_test_env(test_dir, setup_files)
@@ -217,13 +224,29 @@ def run_test(_test_name, patch_file, setup_files, should_succeed, test_dir):
 
         succeeded = result.returncode == 0
 
-        if succeeded == should_succeed:
-            return True, f"Exit code: {result.returncode}"
-        else:
+        if succeeded != should_succeed:
             return (
                 False,
                 f"Expected {'success' if should_succeed else 'failure'}, got exit code {result.returncode}\nstdout: {result.stdout}\nstderr: {result.stderr}",
             )
+
+        if succeeded:
+            for actual_name, expected_name in expected_outputs:
+                actual_path = test_dir / actual_name
+                expected_path = script_dir / expected_name
+
+                if not actual_path.exists():
+                    return False, f"Expected output file missing: {actual_path}"
+
+                actual_content = actual_path.read_text(encoding="utf-8")
+                expected_content = expected_path.read_text(encoding="utf-8")
+                if actual_content != expected_content:
+                    return (
+                        False,
+                        f"Output mismatch for {actual_name}\nexpected:\n{expected_content}\nactual:\n{actual_content}",
+                    )
+
+        return True, f"Exit code: {result.returncode}"
 
     except subprocess.TimeoutExpired:
         return False, "Test timed out"

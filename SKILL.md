@@ -54,6 +54,8 @@ Update chunks use one `@@` anchor line, followed by optional reference lines:
 +<new line to add>
 ```
 
+If a chunk only contains `+` lines, those lines are inserted immediately after the `@@` anchor and any space-prefixed reference lines.
+
 ## Usage
 
 ### From a file

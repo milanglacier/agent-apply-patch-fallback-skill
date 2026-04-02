@@ -182,11 +182,7 @@ def compute_replacements(
 
         # Handle pure addition (no old lines)
         if len(chunk.old_lines) == 0:
-            insertion_idx = (
-                len(original_lines) - 1
-                if original_lines and original_lines[-1] == ""
-                else len(original_lines)
-            )
+            insertion_idx = line_idx
             replacements.append((insertion_idx, 0, chunk.new_lines))
             continue
 
