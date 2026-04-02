@@ -1,0 +1,5 @@
+First line
+Middle section
+Updated middle content
+End of File marker
+Very last line updated

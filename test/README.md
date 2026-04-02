@@ -8,9 +8,8 @@ Comprehensive test suite for the `apply_patch` Python script.
 # Run all tests
 python3 run_tests.py
 
-# Run individual test patches (from test directory)
-../scripts/apply_patch test_add.patch
-../scripts/apply_patch test_update.patch
+# Run an individual case patch (from test directory)
+../scripts/apply_patch cases/basic_add/patch.patch
 ```
 
 ## Test Coverage
@@ -48,9 +47,10 @@ python3 run_tests.py
 ## Test Structure
 
 Each test consists of:
-- **Patch file** (`test_*.patch`) - The patch to apply
-- **Input files** - Files copied to temp directory before patching
-- **Expected result** - Whether the patch should succeed or fail
+- **Case directory** (`cases/<name>/`) - One directory per test case
+- **`patch.patch`** - The patch to apply
+- **`before/`** - Optional starting tree copied into a temp directory before patching
+- **`after/`** - Required for successful tests; the exact expected output tree after patching
 
 Tests run in isolated temporary directories to prevent interference.
 
@@ -58,17 +58,14 @@ Tests run in isolated temporary directories to prevent interference.
 
 To add a new test:
 
-1. Create a patch file: `test_mytest.patch`
-2. Create any needed input files
-3. Add test to `run_tests.py`:
+1. Create a case directory: `cases/my_test_name/`
+2. Add `patch.patch`
+3. Add `before/` if the patch needs existing files
+4. Add `after/` for successful tests
+5. Register the case in `run_tests.py`:
 
 ```python
-(
-    "my_test_name",           # Test identifier
-    "test_mytest.patch",      # Patch filename
-    [("input.txt", "input.txt")],  # Files to copy (src, dest)
-    True                      # Expected to succeed
-),
+("my_test_name", True),
 ```
 
 ## Exit Codes

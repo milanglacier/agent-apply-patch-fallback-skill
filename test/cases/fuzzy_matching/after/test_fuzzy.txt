@@ -1,0 +1,6 @@
+Section A
+Fuzzy matched exact
+Section B
+Fuzzy matched whitespace
+Section C
+Fuzzy matched unicode

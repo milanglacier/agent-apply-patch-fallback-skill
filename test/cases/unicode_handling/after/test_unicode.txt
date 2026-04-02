@@ -1,0 +1,9 @@
+Smart quotes test
+'Hello World'
+Dashes test
+-- regular dash
+– en-dash
+— em-dash
+Ellipsis test
+... three dots
+… ellipsis

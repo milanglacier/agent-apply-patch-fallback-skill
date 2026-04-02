@@ -1,0 +1,6 @@
+Context with special chars: @#$%^&*()
+Updated special chars
+Unicode context: 你好世界
+Updated unicode line
+Long context line that is very descriptive and helps locate the exact position in the file
+Updated long context target

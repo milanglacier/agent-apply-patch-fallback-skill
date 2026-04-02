@@ -328,14 +328,16 @@ def parse_update_chunks(
             while (
                 i < len(lines)
                 and not lines[i].startswith("@@")
-                and not lines[i].startswith("***")
+                and (
+                    not lines[i].startswith("***") or lines[i] == "*** End of File"
+                )
             ):
                 change_line = lines[i]
 
                 if change_line == "*** End of File":
                     is_end_of_file = True
                     i += 1
-                    break
+                    continue
 
                 if change_line.startswith(" "):
                     # Keep line - appears in both old and new

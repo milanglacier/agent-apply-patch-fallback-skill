@@ -1,0 +1,6 @@
+Line with trailing spaces  
+Content with trailing spaces
+Tab indentation
+    New space indented
+Mixed whitespace
+  New mixed  

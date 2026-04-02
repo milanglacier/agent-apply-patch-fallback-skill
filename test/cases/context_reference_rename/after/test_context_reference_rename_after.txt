@@ -1,0 +1,6 @@
+Rename anchor
+Reference line one
+Reference line two
+New line one
+New line two
+Trailing line
