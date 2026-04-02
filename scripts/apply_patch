@@ -22,7 +22,7 @@ import sys
 import re
 import argparse
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 
@@ -79,6 +79,16 @@ class FileChange:
     path: str
     type: str  # 'add', 'update', 'delete', 'move'
     move_path: Optional[str] = None
+
+
+@dataclass
+class FileSnapshot:
+    """Stores the original filesystem state for rollback."""
+
+    existed: bool
+    contents: bytes = b""
+    mode: Optional[int] = None
+    is_dir: bool = False
 
 
 def normalize_unicode(text: str) -> str:
@@ -231,19 +241,10 @@ def apply_replacements(
     return result
 
 
-def derive_new_content(file_path: str, chunks: List[UpdateChunk]) -> str:
-    """
-    Derive new file content from update chunks.
-    Returns the new content.
-    """
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            original_content = f.read()
-    except FileNotFoundError:
-        raise ApplicationError(f"File not found: {file_path}")
-    except Exception as e:
-        raise ApplicationError(f"Failed to read file {file_path}: {e}")
-
+def derive_new_content_from_text(
+    original_content: str, chunks: List[UpdateChunk], file_path: str
+) -> str:
+    """Derive updated file content from the provided text."""
     original_lines = original_content.split("\n")
 
     # Drop trailing empty element for consistent line counting
@@ -258,6 +259,22 @@ def derive_new_content(file_path: str, chunks: List[UpdateChunk]) -> str:
         new_lines.append("")
 
     return "\n".join(new_lines)
+
+
+def derive_new_content(file_path: str, chunks: List[UpdateChunk]) -> str:
+    """
+    Derive new file content from update chunks.
+    Returns the new content.
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            original_content = f.read()
+    except FileNotFoundError:
+        raise ApplicationError(f"File not found: {file_path}")
+    except Exception as e:
+        raise ApplicationError(f"Failed to read file {file_path}: {e}")
+
+    return derive_new_content_from_text(original_content, chunks, file_path)
 
 
 def parse_patch_header(
@@ -442,75 +459,172 @@ def parse_patch(patch_text: str) -> List[Hunk]:
     return hunks
 
 
+def snapshot_path(path: Path) -> FileSnapshot:
+    """Capture the current state of a path before mutation."""
+    if not path.exists():
+        return FileSnapshot(existed=False)
+
+    stat_result = path.stat()
+    if path.is_dir():
+        return FileSnapshot(existed=True, mode=stat_result.st_mode, is_dir=True)
+
+    return FileSnapshot(
+        existed=True,
+        contents=path.read_bytes(),
+        mode=stat_result.st_mode,
+    )
+
+
+def restore_snapshot(path: Path, snapshot: FileSnapshot) -> None:
+    """Restore a path to its snapshotted state."""
+    if not snapshot.existed:
+        if path.exists() and not path.is_dir():
+            path.unlink()
+        return
+
+    if snapshot.is_dir:
+        path.mkdir(parents=True, exist_ok=True)
+        if snapshot.mode is not None:
+            path.chmod(snapshot.mode & 0o7777)
+        return
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(snapshot.contents)
+    if snapshot.mode is not None:
+        path.chmod(snapshot.mode & 0o7777)
+
+
+def build_plan(
+    hunks: List[Hunk], base_dir: str = "."
+) -> List[Tuple[Hunk, Path, Optional[str]]]:
+    """Validate hunks and precompute file contents before mutating the filesystem."""
+    if not hunks:
+        raise ApplicationError("No hunks to apply")
+
+    planned_actions = []
+    base = Path(base_dir).resolve()
+    virtual_state: Dict[Path, Optional[str]] = {}
+
+    def get_virtual_file(path: Path) -> Tuple[str, Optional[str]]:
+        if path in virtual_state:
+            content = virtual_state[path]
+            if content is None:
+                return "missing", None
+            return "file", content
+
+        if not path.exists():
+            return "missing", None
+
+        if path.is_dir():
+            return "dir", None
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return "file", f.read()
+        except Exception as e:
+            raise ApplicationError(f"Failed to read file {path}: {e}")
+
+    for hunk in hunks:
+        file_path = base / hunk.path
+        current_kind, current_content = get_virtual_file(file_path)
+
+        if hunk.type == HunkType.ADD:
+            if current_kind == "dir":
+                raise ApplicationError(f"Path is a directory, not a file: {file_path}")
+            planned_actions.append((hunk, file_path, hunk.contents))
+            virtual_state[file_path] = hunk.contents
+            continue
+
+        if hunk.type == HunkType.DELETE:
+            if current_kind == "missing":
+                raise ApplicationError(f"File to delete not found: {file_path}")
+            if current_kind == "dir":
+                raise ApplicationError(f"Path is a directory, not a file: {file_path}")
+            planned_actions.append((hunk, file_path, None))
+            virtual_state[file_path] = None
+            continue
+
+        if current_kind == "missing":
+            raise ApplicationError(f"File to update not found: {file_path}")
+
+        if current_kind == "dir":
+            raise ApplicationError(f"Path is a directory, not a file: {file_path}")
+
+        new_content = derive_new_content_from_text(
+            current_content or "", hunk.chunks, str(file_path)
+        )
+        planned_actions.append((hunk, file_path, new_content))
+
+        if hunk.move_path:
+            move_path = base / hunk.move_path
+            move_kind, _ = get_virtual_file(move_path)
+            if move_kind == "dir":
+                raise ApplicationError(f"Path is a directory, not a file: {move_path}")
+            virtual_state[file_path] = None
+            virtual_state[move_path] = new_content
+        else:
+            virtual_state[file_path] = new_content
+
+    return planned_actions
+
+
 def apply_hunks(hunks: List[Hunk], base_dir: str = ".") -> List[FileChange]:
     """
     Apply hunks to the filesystem.
     Returns list of changes made.
     """
-    if not hunks:
-        raise ApplicationError("No hunks to apply")
-
+    planned_actions = build_plan(hunks, base_dir)
     changes = []
     base = Path(base_dir).resolve()
+    snapshots: Dict[Path, FileSnapshot] = {}
+    snapshot_order: List[Path] = []
 
-    for hunk in hunks:
-        file_path = base / hunk.path
+    def remember(path: Path) -> None:
+        if path not in snapshots:
+            snapshots[path] = snapshot_path(path)
+            snapshot_order.append(path)
 
-        if hunk.type == HunkType.ADD:
-            # Create parent directories
-            file_path.parent.mkdir(parents=True, exist_ok=True)
+    for hunk, file_path, _ in planned_actions:
+        remember(file_path)
+        if hunk.type == HunkType.UPDATE and hunk.move_path:
+            remember(base / hunk.move_path)
 
-            # Write file
-            try:
+    try:
+        for hunk, file_path, new_content in planned_actions:
+            if hunk.type == HunkType.ADD:
+                file_path.parent.mkdir(parents=True, exist_ok=True)
                 with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(hunk.contents)
+                    f.write(new_content or "")
                 changes.append(FileChange(path=str(file_path), type="add"))
-            except Exception as e:
-                raise ApplicationError(f"Failed to create file {file_path}: {e}")
+                continue
 
-        elif hunk.type == HunkType.DELETE:
-            try:
+            if hunk.type == HunkType.DELETE:
                 file_path.unlink()
                 changes.append(FileChange(path=str(file_path), type="delete"))
-            except FileNotFoundError:
-                raise ApplicationError(f"File to delete not found: {file_path}")
-            except Exception as e:
-                raise ApplicationError(f"Failed to delete file {file_path}: {e}")
+                continue
 
-        elif hunk.type == HunkType.UPDATE:
-            if not file_path.exists():
-                raise ApplicationError(f"File to update not found: {file_path}")
+            if hunk.move_path:
+                move_path = base / hunk.move_path
+                move_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(move_path, "w", encoding="utf-8") as f:
+                    f.write(new_content or "")
+                file_path.unlink()
+                changes.append(
+                    FileChange(path=str(file_path), type="move", move_path=str(move_path))
+                )
+                continue
 
-            if file_path.is_dir():
-                raise ApplicationError(f"Path is a directory, not a file: {file_path}")
-
-            try:
-                new_content = derive_new_content(str(file_path), hunk.chunks)
-
-                if hunk.move_path:
-                    # Move operation: write to new location, delete old
-                    move_path = base / hunk.move_path
-                    move_path.parent.mkdir(parents=True, exist_ok=True)
-
-                    with open(move_path, "w", encoding="utf-8") as f:
-                        f.write(new_content)
-
-                    file_path.unlink()
-                    changes.append(
-                        FileChange(
-                            path=str(file_path), type="move", move_path=str(move_path)
-                        )
-                    )
-                else:
-                    # Regular update
-                    with open(file_path, "w", encoding="utf-8") as f:
-                        f.write(new_content)
-                    changes.append(FileChange(path=str(file_path), type="update"))
-
-            except ApplicationError:
-                raise
-            except Exception as e:
-                raise ApplicationError(f"Failed to update file {file_path}: {e}")
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(new_content or "")
+            changes.append(FileChange(path=str(file_path), type="update"))
+    except ApplicationError:
+        for path in reversed(snapshot_order):
+            restore_snapshot(path, snapshots[path])
+        raise
+    except Exception as e:
+        for path in reversed(snapshot_order):
+            restore_snapshot(path, snapshots[path])
+        raise ApplicationError(f"Failed to apply patch: {e}")
 
     return changes
 

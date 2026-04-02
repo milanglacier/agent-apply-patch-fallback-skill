@@ -1,0 +1,11 @@
+# Test separate update hunks against the same file in sequence
+*** Begin Patch
+*** Update File: sequence.txt
+@@ Start
+-First old
++First new
+*** Update File: sequence.txt
+@@ First new
+-Second old
++Second new
+*** End Patch

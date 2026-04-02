@@ -13,9 +13,11 @@ from pathlib import Path
 TESTS = [
     ("basic_add", True),
     ("basic_update", True),
+    ("sequential_hunks_same_file", True),
     ("basic_move", True),
     ("basic_delete", True),
     ("expected_fail", False),
+    ("no_partial_apply_on_failure", False),
     ("multiple_operations", True),
     ("multiple_chunks", True),
     ("unicode_handling", True),
@@ -49,7 +51,7 @@ def copy_tree(source_dir, dest_dir):
 
 
 def collect_tree(root_dir):
-    """Return the relative file tree and contents for a test directory."""
+    """Return the relative file tree and file bytes for a test directory."""
     tree = {}
 
     if not root_dir.exists():
@@ -57,9 +59,7 @@ def collect_tree(root_dir):
 
     for path in sorted(root_dir.rglob("*")):
         if path.is_file():
-            tree[path.relative_to(root_dir).as_posix()] = path.read_text(
-                encoding="utf-8"
-            )
+            tree[path.relative_to(root_dir).as_posix()] = path.read_bytes()
 
     return tree
 
@@ -83,6 +83,7 @@ def run_test(test_name, should_succeed, test_dir):
         return False, f"Failing test should not define after/: {after_dir}"
 
     copy_tree(before_dir, test_dir)
+    initial_tree = collect_tree(test_dir)
 
     # Run the patch
     try:
@@ -121,6 +122,13 @@ def run_test(test_name, should_succeed, test_dir):
                         False,
                         f"Output mismatch for {relative_path}\nexpected:\n{expected_content!r}\nactual:\n{actual_content!r}",
                     )
+        else:
+            actual_tree = collect_tree(test_dir)
+            if actual_tree != initial_tree:
+                return (
+                    False,
+                    f"Failed patch modified the filesystem\nexpected:\n{initial_tree!r}\nactual:\n{actual_tree!r}",
+                )
 
         return True, f"Exit code: {result.returncode}"
 

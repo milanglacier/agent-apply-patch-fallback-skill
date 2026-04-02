@@ -1,0 +1,11 @@
+# Test that earlier hunks are not committed if a later hunk fails
+*** Begin Patch
+*** Update File: sample.txt
+@@ Heading
+-Original line
++Updated line
+*** Update File: missing.txt
+@@ Missing heading
+-Does not exist
++Still does not exist
+*** End Patch
